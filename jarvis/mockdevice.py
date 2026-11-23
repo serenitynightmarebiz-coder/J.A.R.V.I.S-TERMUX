@@ -7,9 +7,13 @@ layer and tools can all be exercised on a laptop or in a container.
 from __future__ import annotations
 
 import json
+import os
 import time
 
 _CALLS: list[list[str]] = []
+_CLIP = "mock clipboard contents"
+_NOTIFY: dict[int, dict] = {}
+_NEXT_ID = 42
 
 SCREEN = """<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <hierarchy rotation="0">
@@ -51,14 +55,19 @@ def calls() -> list[list[str]]:
 
 
 def reset() -> None:
+    global _CLIP, _NEXT_ID
     _CALLS.clear()
+    _NOTIFY.clear()
+    _CLIP = "mock clipboard contents"
+    _NEXT_ID = 42
 
 
 def _env(*args) -> str:
     return json.dumps(list(args))
 
 
-def handle(argv: list[str]) -> tuple[int, str, str]:
+def handle(argv: list[str], stdin: str | None = None) -> tuple[int, str, str]:
+    global _CLIP, _NEXT_ID
     if not argv:
         return 1, "", "empty command"
     _CALLS.append(list(argv))
@@ -87,7 +96,9 @@ def handle(argv: list[str]) -> tuple[int, str, str]:
         else:
             out = json.dumps([{"stream": "music", "volume": 8, "max_volume": 15}])
     elif cmd == "termux-clipboard-get":
-        out = "mock clipboard contents"
+        out = _CLIP
+    elif cmd == "termux-clipboard-set":
+        _CLIP = stdin or ""
     elif cmd == "termux-wifi-connectioninfo":
         out = json.dumps(
             {"ssid": "JARVIS-NET", "bssid": "aa:bb:cc:dd:ee:ff", "ip": "192.168.1.42",
@@ -128,12 +139,22 @@ def handle(argv: list[str]) -> tuple[int, str, str]:
     elif cmd == "termux-sms-send":
         out = ""
     elif cmd == "termux-notification":
-        out = "42"
+        title = content = ""
+        for i, arg in enumerate(args):
+            if arg == "--title" and i + 1 < len(args):
+                title = args[i + 1]
+            elif arg == "--content" and i + 1 < len(args):
+                content = args[i + 1]
+        _NOTIFY[_NEXT_ID] = {"id": _NEXT_ID, "packageName": "com.termux", "title": title,
+                             "content": content, "priority": 0}
+        out = str(_NEXT_ID)
+        _NEXT_ID += 1
     elif cmd == "termux-notification-list":
-        out = json.dumps(
-            [{"id": 42, "packageName": "com.whatsapp", "title": "Pepper Potts",
-              "content": "Dinner at eight?", "priority": 0}]
-        )
+        rows = list(_NOTIFY.values()) + [
+            {"id": 7, "packageName": "com.whatsapp", "title": "Pepper Potts",
+             "content": "Dinner at eight?", "priority": 0}
+        ]
+        out = json.dumps(rows)
     elif cmd == "termux-sensor":
         out = json.dumps({"acceleration": [0.1, 9.7, 0.2]})
     elif cmd == "termux-camera-info":
@@ -193,6 +214,13 @@ def handle(argv: list[str]) -> tuple[int, str, str]:
         }
         out = props.get(args[0], "") if args else ""
     elif cmd == "screencap":
+        target = args[-1] if args else ""
+        if target:
+            import pathlib as _p
+
+            dest = _p.Path(target)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(b"\x89PNG\r\n\x1a\n" + os.urandom(96))
         out = ""
     elif cmd == "wm":
         out = "Physical size: 1080x2400"

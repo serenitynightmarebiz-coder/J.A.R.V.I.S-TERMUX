@@ -332,9 +332,36 @@ Restart, or `/reload`. The model sees it immediately — no prompt editing.
 | Vosk-less voice silence | `termux-speech-to-text` needs the mic dialog; grant microphone |
 | daemon dies after swipe | `pkg install termux-services && bash scripts/service-setup.sh` |
 | `403 not addressed` from the API | say `"jarvis"` first — the wake gate is on by design |
-| `uiautomator` returns nothing | screen locked or the app uses secure flags |
+| `uiautomator` returns nothing | screen locked, or the ROM blocks it (see below) |
+| `screencap` produces no data | ROM denies frame-buffer access to apps — screenshots unavailable from Termux on that device |
+| `pm list packages` fails | Android 14+ ROMs block `cmd package` from apps; JARVIS falls back to `dumpsys` automatically |
 | edits refused | path outside project, or a protected file (`config.json`, `data/`) |
 | self-test fails after an edit | `/reload` was skipped, or `self_rollback` the file |
+
+### Android 14+ / cloud-phone ROM restrictions
+
+Verified on a real Android 14 (API 34) cloud phone: some hardened ROMs deny
+untrusted-app access to `cmd` services, `uiautomator` and the frame buffer.
+JARVIS detects each case and says so plainly instead of failing silently:
+app listing still works (via `dumpsys`), app launching still works (via
+`am start` with the launcher activity resolved from `dumpsys`), and the
+Termux:API suite (battery, clipboard, notifications, sensors, torch, TTS…)
+works fully. `python jarvis.py --verify` prints a per-check PASS/FAIL report
+of exactly what this device allows.
+
+### Fewer tokens (optional)
+
+Tool outputs (screen dumps, app lists, notification JSON) can eat a small
+model's context. If [Headroom](https://github.com/headroomlabs-ai/headroom) is
+installed, JARVIS compresses message history before every model call — same
+answers, fewer input tokens, all locally:
+
+```sh
+pip install headroom-ai        # optional; JARVIS stays zero-dep without it
+```
+
+No other change is needed; set `"compress_context": false` in config.json (or
+`JARVIS_COMPRESS=0`) to turn it off.
 
 ---
 

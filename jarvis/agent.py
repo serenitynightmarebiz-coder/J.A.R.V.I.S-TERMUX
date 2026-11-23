@@ -78,6 +78,19 @@ def _extract_json(text: str) -> dict | None:
     return None
 
 
+class _CompressingClient:
+    """Route every request through Headroom when it is installed (no-op otherwise)."""
+
+    def __init__(self, inner, model: str = ""):
+        self._inner = inner
+        self._model = model
+
+    def chat(self, messages: list[dict], tools: list[dict] | None = None):
+        from . import compress
+
+        return self._inner.chat(compress.squeeze(messages, self._model), tools)
+
+
 class Agent:
     def __init__(
         self,
@@ -91,7 +104,9 @@ class Agent:
         self.memory = memory
         self.speaker = speaker
         self.confirm = confirm or (lambda name, args: True)
-        self.client = client or llm_mod.build(cfg.provider)
+        self.client = _CompressingClient(
+            client or llm_mod.build(cfg.provider), cfg.provider.model if cfg.compress_context else ""
+        )
         self.prompt_mode = cfg.provider.tool_mode == "prompt"
         self.native_broken = False
         self.last_tools: list[str] = []

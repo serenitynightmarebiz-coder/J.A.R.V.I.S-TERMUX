@@ -31,3 +31,11 @@ copied, and none of their licences are inherited here (this repo is MIT).
 
 If you fork one of the above instead, see [FORKING.md](FORKING.md) for a map of
 what to port over.
+
+- [Headroom](https://github.com/headroomlabs-ai/headroom) — optional context
+  compression (Apache-2.0). If `pip install headroom-ai` is present, JARVIS
+  routes message history through `headroom.compress()` before each model call;
+  without it the integration is a pass-through and JARVIS remains dependency-free.
+- [itskreisler/termux-skill](https://github.com/itskreisler/termux-skill) —
+  surveyed its 70+ Termux API command reference when reviewing JARVIS's own
+  Termux:API coverage.

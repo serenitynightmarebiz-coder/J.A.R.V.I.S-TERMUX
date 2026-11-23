@@ -124,6 +124,8 @@ class Config:
     # presentation
     animations: bool = True
     haptics: bool = True
+    # context compression (uses Headroom when installed; no-op otherwise)
+    compress_context: bool = True
 
     # ---------------------------------------------------------------- helpers
     def system_prompt(self) -> str:

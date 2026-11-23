@@ -82,6 +82,13 @@ def volume(stream: str = "music", level: int | None = None) -> str:
             return _fail(err)
         if isinstance(data, dict):
             return f"{stream}: {data.get('volume')}/{data.get('max_volume')}"
+        text = str(data)
+        if "Usage" in text or "Invalid argument" in text:
+            # newer Termux:API removed the read syntax; only setting works
+            return (
+                f"FAILED: this Termux:API version cannot read the {stream} volume "
+                "(set-only). Use volume(stream, level) to change it."
+            )
         return _j(data)
     ok, msg = termux_ok("termux-volume", stream, str(int(level)))
     return f"{stream} volume -> {level}." if ok else _fail(msg)
@@ -150,7 +157,12 @@ def notifications_list(limit: int = 10) -> str:
         _strip(n, ("id", "packageName", "title", "content", "priority"))
         for n in data[: int(limit)]
     ]
-    return _j(rows) if rows else "No notifications."
+    if not rows:
+        return (
+            "No notifications. (If you expected one, grant Termux:API notification "
+            "access: Settings → Notifications → Device & app notifications.)"
+        )
+    return _j(rows)
 
 
 @tool("notification_dismiss", "Remove a notification by id.",
@@ -331,10 +343,11 @@ def share(path: str, content_type: str = "text/plain") -> str:
 
 
 @tool("camera_photo", "Take a photo with the front or back camera and save it to a file.",
-      {"path": {"type": "string", "description": "Output path", "default": "/sdcard/jarvis/capture.jpg"},
+      {"path": {"type": "string", "description": "Output path; defaults to the JARVIS media folder"},
        "camera": {"type": "integer", "description": "0 = back, 1 = front", "default": 0}},
       category="media")
-def camera_photo(path: str = "/sdcard/jarvis/capture.jpg", camera: int = 0) -> str:
+def camera_photo(path: str = "", camera: int = 0) -> str:
+    path = path or str(shims.media_dir() / "capture.jpg")
     os.makedirs(os.path.dirname(path), exist_ok=True) if path.startswith("/") else None
     ok, msg = termux_ok("termux-camera-photo", "-c", str(int(camera)), path, timeout=60)
     return f"Photo saved to {path}." if ok else _fail(msg)

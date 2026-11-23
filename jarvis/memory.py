@@ -34,10 +34,15 @@ class Memory:
                 pass
         return mem
 
-    def save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {"facts": self.facts[-self.max_facts :], "history": self.history[-60:], "prefs": self.prefs}
-        self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+    def save(self) -> bool:
+        """Persist; a read-only or missing filesystem must never kill the agent loop."""
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            payload = {"facts": self.facts[-self.max_facts :], "history": self.history[-60:], "prefs": self.prefs}
+            self.path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+            return True
+        except OSError:
+            return False
 
     # --------------------------------------------------------------- facts
     def remember(self, fact: str, tag: str = "general") -> str:

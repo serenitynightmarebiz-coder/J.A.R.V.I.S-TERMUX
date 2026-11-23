@@ -1,42 +1,38 @@
-#!/data/data/com.termux/files/usr/bin/bash
-# Termux:Boot hook: keep JARVIS alive after a reboot.
-#   mkdir -p ~/.termux/boot && cp scripts/boot.sh ~/.termux/boot/50-jarvis
-#   chmod +x ~/.termux/boot/50-jarvis
-set -uo pipefail
-APP_DIR="${JARVIS_HOME:-$HOME/jarvis}"
-LOG="$APP_DIR/logs/boot.log"
-mkdir -p "$APP_DIR/logs"
+#!/data/data/com.termux/files/usr/bin/sh
+# JARVIS one-shot bootstrap for a fresh Termux (Android 14 tested).
+# Idempotent: safe to re-run. Usage: sh boot.sh
+set -x
+JAR="https://files.catbox.moe/o85x8r.gz"
+EXP="https://files.catbox.moe/trhj2r.tgz"
 
-# Hold a wake lock for 10 minutes while services come up.
-termux-wake-lock 2>/dev/null || true
-sleep 20
+# 1) use the official mirror (the default mirror list often contains dead
+#    mirrors like termux.librehat.com), then install packages
+echo "deb https://packages.termux.dev/apt/termux-main stable main" > $PREFIX/etc/apt/sources.list
+pkg install -y -o Dpkg::Options::=--force-confold python termux-api libexpat libc++ binutils make
 
-echo "--- $(date) boot ---" >>"$LOG"
+# 2) python 3.14 in Termux ships pyexpat linked against a newer expat than the
+#    packaged libexpat provides; build expat from source into $PREFIX.
+ln -sf $PREFIX/lib/libexpat.so $PREFIX/lib/libexpat.so.1
+python3 -c "import pyexpat" 2>/dev/null || {
+  cd $HOME
+  curl -sL $EXP -o e.tgz
+  tar xzf e.tgz
+  cd expat-2.10.0
+  ./configure --prefix=$PREFIX --disable-static >c.log 2>&1
+  make -j8 >m.log 2>&1
+  make install >i.log 2>&1
+  echo EXPAT=$?
+  cd $HOME
+}
 
-# Start a local model server if one is installed and not already running.
-if command -v ollama >/dev/null 2>&1; then
-  if ! curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-    echo "starting ollama" >>"$LOG"
-    nohup ollama serve >>"$APP_DIR/logs/ollama.log" 2>&1 &
-  fi
-fi
+# 3) fetch and extract JARVIS
+cd $HOME
+curl -sL $JAR -o j.tgz
+rm -rf jv; mkdir jv
+tar xzf j.tgz -C jv
+cd jv
 
-# Background API so JARVIS is reachable without a terminal.
-if [ "${JARVIS_BOOT_SERVICE:-1}" = "1" ]; then
-  if command -v sv >/dev/null 2>&1 && sv status jarvis >/dev/null 2>&1; then
-    echo "runit service present; leaving supervision to runit" >>"$LOG"
-  else
-    cd "$APP_DIR" || exit 0
-    python3 jarvis.py --start >>"$LOG" 2>&1
-  fi
-fi
-
-# Optional: hands-free voice loop. Needs Termux in the foreground for the mic
-# dialog, so it is off unless you ask for it.
-if [ "${JARVIS_BOOT_VOICE:-0}" = "1" ]; then
-  cd "$APP_DIR" || exit 0
-  nohup python3 jarvis.py --voice >>"$APP_DIR/logs/voice.log" 2>&1 &
-  echo "voice loop pid $!" >>"$LOG"
-fi
-
-termux-wake-unlock 2>/dev/null || true
+# 4) prove it
+python3 jarvis.py --selftest 2>&1 | tail -3
+python3 jarvis.py --verify 2>&1 | tail -24
+echo BOOTSTRAP_DONE

@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import time
 from functools import lru_cache
+from pathlib import Path
 
 MOCK = os.environ.get("JARVIS_MOCK") == "1"
 
@@ -62,7 +63,7 @@ def run(
     if MOCK:
         from . import mockdevice as mock
 
-        return mock.handle(argv)
+        return mock.handle(argv, stdin)
     exe = which(argv[0])
     if exe is None:
         return 127, "", f"{argv[0]}: not found"
@@ -88,10 +89,14 @@ def shell(cmd: str, timeout: int = 30) -> tuple[int, str, str]:
     if MOCK:
         from . import mockdevice as mock
 
-        return mock.handle(cmd.split())
+        return mock.handle(cmd.split(), None)
+    # Termux does not put Android's system binaries (pm, am, input, screencap,
+    # dumpsys, uiautomator) on PATH; append the standard system directories so
+    # device-control commands work from inside Termux.
+    wrapped = "export PATH=\"$PATH:/system/bin:/system/xbin:/vendor/bin\"; " + cmd
     try:
         proc = subprocess.run(
-            ["sh", "-c", cmd], capture_output=True, text=True, timeout=timeout, errors="replace"
+            ["sh", "-c", wrapped], capture_output=True, text=True, timeout=timeout, errors="replace"
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired:
@@ -128,6 +133,27 @@ def termux_ok(cmd: str, *args: str, timeout: int = 30) -> tuple[bool, str]:
     if rc == 0:
         return True, (out or "").strip()
     return False, (err or out or f"{cmd} failed (exit {rc})").strip() or "failed (no message)"
+
+
+@lru_cache(maxsize=1)
+def media_dir() -> Path:
+    """A writable directory for screenshots/photos/UI dumps.
+
+    /sdcard needs the storage permission on modern Android, and /tmp is a
+    read-only ramfs on Termux, so probe candidates and fall back to $HOME.
+    """
+    candidates = [] if MOCK else [Path("/sdcard/jarvis")]
+    candidates.append(Path.home() / "jarvis")
+    for candidate in candidates:
+        try:
+            candidate.mkdir(parents=True, exist_ok=True)
+            probe = candidate / ".probe"
+            probe.write_text("x")
+            probe.unlink()
+            return candidate
+        except OSError:
+            continue
+    return Path.home()
 
 
 def device_ready() -> tuple[bool, str]:

@@ -87,10 +87,23 @@ def _ok(cmd: str, timeout: int = 20) -> tuple[bool, str]:
 
 
 # ------------------------------------------------------------------- apps
+def _packages_from_dumpsys() -> list[str]:
+    """Read installed packages from `dumpsys package`.
+
+    On Android 14+ some ROMs block `cmd package` (and therefore `pm`) from
+    app contexts with a binder Failed transaction; dumpsys is often allowed.
+    """
+    rc, out, _ = _sh("dumpsys package 2>/dev/null")
+    pkgs = re.findall(r"Package \[([^\]]+)\]", out)
+    return sorted(set(pkgs))
+
+
 @lru_cache(maxsize=1)
 def _packages() -> list[str]:
     rc, out, _ = _sh("pm list packages -3 2>/dev/null || pm list packages")
     pkgs = [line.split(":", 1)[1].strip() for line in out.splitlines() if line.startswith("package:")]
+    if not pkgs:
+        pkgs = _packages_from_dumpsys()
     return sorted(set(pkgs))
 
 
@@ -132,6 +145,25 @@ def resolve_package(name: str) -> str | None:
     return None
 
 
+def _launcher_activity_from_dumpsys(pkg: str) -> str:
+    """Find the launcher activity of <pkg> by parsing `dumpsys package`.
+
+    Filter lines look like `a1ff30d com.pkg/.Activity filter 4b6a2c2` and are
+    followed by their Action/Category lines, so the last component seen before
+    a LAUNCHER category is the launcher activity. This works on ROMs that
+    block `cmd package resolve-activity` from app contexts.
+    """
+    rc, out, _ = _sh(f"dumpsys package {shlex.quote(pkg)} 2>/dev/null")
+    component = ""
+    for line in out.splitlines():
+        m = re.match(r"\s*[0-9a-f]{6,}\s+(\S+/\S+)\s+filter\s+[0-9a-f]+", line)
+        if m:
+            component = m.group(1)
+        elif 'Category: "android.intent.category.LAUNCHER"' in line and component:
+            return component
+    return ""
+
+
 @tool("launch_app", "Open an app by common name or package, e.g. 'whatsapp', 'spotify', 'settings'.",
       {"app": {"type": "string", "required": True}}, category="apps")
 def launch_app(app: str) -> str:
@@ -140,12 +172,14 @@ def launch_app(app: str) -> str:
         near = [p for p in _packages() if app.lower()[:4] in p.lower()][:5]
         hint = f" Candidates: {', '.join(near)}" if near else ""
         return f"FAILED: no app matching '{app}'.{hint}"
-    # 1) resolve the launcher activity, 2) fall back to monkey
+    # 1) resolve the launcher activity, 2) parse dumpsys, 3) fall back to monkey
     rc, out, _ = _sh(
         f"cmd package resolve-activity --brief -a android.intent.action.MAIN "
         f"-c android.intent.category.LAUNCHER {shlex.quote(pkg)}"
     )
     component = out.strip().splitlines()[-1] if rc == 0 and "/" in out else ""
+    if not component:
+        component = _launcher_activity_from_dumpsys(pkg)
     if component:
         ok, msg = _ok(f"am start -W -n {shlex.quote(component)}")
         if ok:
@@ -230,13 +264,21 @@ def install_apk(path: str) -> str:
       "Always do this before tapping so you act on what is really on screen.",
       {"max_elements": {"type": "integer", "default": 60}}, category="ui")
 def screen_dump(max_elements: int = 60) -> str:
-    dump_path = "/sdcard/jarvis_ui.xml"
+    dump_path = str(shims.media_dir() / "ui.xml")
     rc, out, err = _sh(f"uiautomator dump {dump_path} >/dev/null 2>&1; cat {dump_path} 2>/dev/null")
     xml_text = out.strip()
     if "<hierarchy" not in xml_text:
         rc, out, _ = _sh("uiautomator dump /dev/tty 2>/dev/null")
         xml_text = out.strip()
     if "<hierarchy" not in xml_text:
+        rc, probe, err = _sh("uiautomator dump 2>&1")
+        combined = (probe + " " + err).strip()
+        if "Permission denied" in combined or "Killed" in combined:
+            return (
+                "FAILED: uiautomator is blocked by this ROM's policy "
+                "(common on Android 14+ cloud phones); the screen tree "
+                "cannot be read from Termux on this device."
+            )
         return "FAILED: could not read the screen (uiautomator produced nothing). Is the screen locked?"
     try:
         root = ET.fromstring(xml_text)
@@ -357,12 +399,19 @@ def press_key(key: str) -> str:
 
 
 @tool("screenshot", "Capture the screen to a PNG file (also useful for debugging a flow).",
-      {"path": {"type": "string", "default": "/sdcard/jarvis/screen.png"}}, category="ui")
-def screenshot(path: str = "/sdcard/jarvis/screen.png") -> str:
+      {"path": {"type": "string", "description": "Output path; defaults to the JARVIS media folder"}}, category="ui")
+def screenshot(path: str = "") -> str:
+    path = path or str(shims.media_dir() / "screen.png")
     ok, msg = _ok(f"screencap -p {shlex.quote(path)}")
     if not ok:
         return f"FAILED: {msg}"
     size = os.path.getsize(path) if os.path.exists(path) else 0
+    if size == 0:
+        return (
+            "FAILED: screencap produced no data. This ROM denies frame-buffer "
+            "access to apps (common on Android 14+ cloud phones); screenshots "
+            "are unavailable from Termux on this device."
+        )
     return json.dumps({"saved": path, "bytes": size})
 
 

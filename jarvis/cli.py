@@ -12,7 +12,7 @@ from pathlib import Path
 from . import llm as llm_mod
 from . import animations, service, shims, ui
 from .agent import Agent
-from .config import CONFIG_PATH, Config, PRESETS, PROVIDER_HELP, write_example
+from .config import APP_DIR, CONFIG_PATH, Config, PRESETS, PROVIDER_HELP, write_example
 from .gate import WakeGate
 from .memory import Memory
 from .tools import REGISTRY, by_category, memory_tools
@@ -488,9 +488,12 @@ def selftest() -> int:
     check("tap_text", android.tap_text("WhatsApp"), "Tapped")
     check("swipe", android.swipe(500, 1500, 500, 500), "Swiped")
     check("time", system.time_now(), "iso")
-    check("write", system.write_file("/tmp/jarvis_selftest.txt", "hello"), "Wrote")
-    check("read", system.read_file("/tmp/jarvis_selftest.txt"), "hello")
-    check("delete", system.delete_path("/tmp/jarvis_selftest.txt"), "Deleted")
+    tmp = APP_DIR / "data" / "selftest"
+    tmp.mkdir(parents=True, exist_ok=True)
+    note = str(tmp / "note.txt")
+    check("write", system.write_file(note, "hello"), "Wrote")
+    check("read", system.read_file(note), "hello")
+    check("delete", system.delete_path(note), "Deleted")
     check("diag", system.termux_diagnostics(), "components")
     check("self_inspect", selfmod.self_inspect(), "tools registered")
 
@@ -504,7 +507,7 @@ def selftest() -> int:
         failures.append("gate: ignored sleep command")
 
     # agent loop with a scripted model
-    memory = Memory.load(Path("/tmp/jarvis_selftest_memory.json"))
+    memory = Memory.load(tmp / "memory.json")
     cfg = Config()
     cfg.provider.tool_mode = "native"
     cfg.greeting = False
@@ -565,6 +568,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--diag", action="store_true", help="dependency and model health check")
     parser.add_argument("--tools", action="store_true", help="list every tool and exit")
     parser.add_argument("--selftest", action="store_true", help="run offline self-test")
+    parser.add_argument("--verify", action="store_true", help="verify real device control (no model needed)")
+    parser.add_argument("--with-sound", action="store_true", help="--verify also speaks out loud")
     parser.add_argument("--voice", action="store_true", help="start in hands-free voice mode")
     parser.add_argument("--demo", action="store_true", help="preview the terminal animations")
     parser.add_argument("--serve", action="store_true", help="run the background API in the foreground")
@@ -588,6 +593,10 @@ def main(argv: list[str] | None = None) -> int:
         shims.MOCK = True
     if args.selftest:
         return selftest()
+    if args.verify:
+        from . import verify
+
+        return verify.main(with_sound=args.with_sound)
     if args.version:
         from . import __version__
 
