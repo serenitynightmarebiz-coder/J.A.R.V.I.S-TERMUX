@@ -3,6 +3,12 @@
 Pure-stdlib Python, no dependencies. The whole app lives in `jarvis/` (package)
 with the entry point `jarvis.py` at the repo root.
 
+`/workspace/jarvis` is itself the git repo root, and it is what gets pushed to
+GitHub (`serenitynightmarebiz-coder/J.A.R.V.I.S-TERMUX`, branch `main`). So all
+paths in the README and CI are root-relative: `tests/`, `scripts/`, `jarvis.py`.
+CI lives in `.github/workflows/tests.yml` here — GitHub only runs workflows from
+the repo root, so it must stay at this level.
+
 ## Run & verify (no phone needed)
 
 ```bash
