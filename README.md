@@ -29,14 +29,14 @@ JARVIS › Message sent to Pepper Potts, sir.
 | Understanding | regex intents (`"call X"`) | any phrasing, multi-step plans |
 | Scope | 8–10 hardcoded actions | **83 tools** across device, UI, phone, files, web, self |
 | Unknown apps | not supported | UI automation: dump screen, tap text, type |
-| Model | one hardcoded API | 12 providers + local Ollama / llama.cpp / LM Studio |
+| Model | one hardcoded API | 13 providers, incl. local Ollama / llama.cpp / LM Studio |
 | Offline | needs internet | fully local with Ollama |
 | Wake word | optional or absent | **required**, with a follow-up window and a sleep command |
 | Feedback | plain text | **live waveform, HUD spinner, wake flash, vibration** |
 | Self-repair | none | reads, edits, tests and reloads its own source |
 | Background | dies with the terminal | supervised daemon + loopback API + boot hook |
 | Safety | none | confirmation gate, loop budget, protected files, rollback |
-| Tests | none | **98 offline tests** + `--selftest` on device |
+| Tests | none | **102 offline tests** + `--selftest` on device |
 
 ---
 
@@ -154,7 +154,7 @@ JARVIS › Added `flash_screen`, tests pass, reloaded.
 | `self_edit` | exact-snippet replacement, then syntax check |
 | `self_write` | create a new module, then syntax check |
 | `self_rollback` | restore the newest backup |
-| `self_test` | run the real 98-test suite and report the tail |
+| `self_test` | run the real 102-test suite and report the tail |
 | `self_logs` | read its own daemon/test logs |
 | `self_restart` | apply changes (`/reload` in a session, automatic in the daemon) |
 
@@ -227,7 +227,7 @@ python jarvis.py "jarvis, battery"      # one-shot (routed to the daemon if runn
 python jarvis.py --diag                 # is everything wired up?
 python jarvis.py --tools                # all 83 capabilities
 python jarvis.py --selftest             # offline proof nothing is broken
-python -m unittest discover -s tests    # 98 tests, no phone needed
+python -m unittest discover -s tests    # 102 tests, no phone needed
 ```
 
 ### Things it can actually do

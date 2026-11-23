@@ -15,3 +15,7 @@ venv/
 .idea/
 .vscode/
 *.swp
+
+# polydev app bookkeeping / session data
+.polydev/
+.revyl/
