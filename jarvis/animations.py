@@ -44,12 +44,29 @@ def waveform_frame(tick: int, width: int = 36, level: float = 1.0) -> str:
     """One frame of the listening waveform (pure, so it can be tested)."""
     cells = []
     for i in range(width):
-        phase = tick * 0.55 + i * 0.42
-        envelope = 0.55 + 0.45 * math.sin(tick * 0.18 + i * 0.07)
-        value = abs(math.sin(phase)) * envelope * level
-        value = min(0.999, max(0.0, value + random.uniform(-0.05, 0.05)))
-        cells.append(BARS[int(value * (len(BARS) - 1))])
+        # a wave travelling left→right, breathing with a two-second beat
+        phase = tick * 0.42 - i * 0.30
+        beat = 0.72 + 0.28 * math.sin(tick * 0.12)
+        envelope = 0.35 + 0.65 * abs(math.sin(tick * 0.08 + i * 0.05))
+        value = (0.18 + 0.82 * abs(math.sin(phase)) * envelope) * beat * level
+        value = min(0.999, max(0.02, value + random.uniform(-0.06, 0.06)))
+        cells.append(BARS[min(len(BARS) - 1, int(value * len(BARS)))])
     return "".join(cells)
+
+
+def paint(frame: str) -> str:
+    """Colour the waveform by height: quiet dim, lively cyan, peaks gold."""
+    runs, current, buf = [], None, ""
+    for char in frame:
+        shade = "dim" if char in BARS[:3] else ("cyan" if char in BARS[3:6] else "gold")
+        if shade != current and buf:
+            runs.append((current, buf))
+            buf = ""
+        current, buf = shade, buf + char
+    if buf:
+        runs.append((current, buf))
+    palette = {"dim": ui.dim, "cyan": ui.cyan, "gold": ui.gold}
+    return "".join(palette[shade](chunk) for shade, chunk in runs)
 
 
 class Listening:
@@ -78,11 +95,11 @@ class Listening:
         tick = 0
         icon = "◉"
         while not self._stop.is_set():
-            frame = waveform_frame(tick, width)
+            frame = paint(waveform_frame(tick, width))
             spinner = GLYPHS_WAKE[tick % len(GLYPHS_WAKE)]
             _write(
                 f"\r  {ui.cyan(spinner)} {ui.dim(self.label)} "
-                f"{ui.cyan(icon)} {ui.dim(frame)}  "
+                f"{ui.gold(icon)} {frame}  "
             )
             tick += 1
             time.sleep(0.07)
