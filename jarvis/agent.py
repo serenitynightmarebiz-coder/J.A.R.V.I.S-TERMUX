@@ -15,6 +15,7 @@ import re
 import time
 from typing import Any, Callable
 
+from . import animations
 from . import llm as llm_mod
 from . import shims, ui
 from .config import Config
@@ -132,7 +133,11 @@ class Agent:
         for step in range(self.cfg.max_steps):
             tools = None if (self.prompt_mode or self.native_broken) else schemas()
             try:
-                with ui.Spinner("thinking" if step == 0 else "working"):
+                anim = animations.Thinking(
+                    "thinking" if step == 0 else "working",
+                    force=None if getattr(self.cfg, "animations", True) else False,
+                )
+                with anim:
                     turn = self.client.chat(messages, tools)
             except llm_mod.LLMError as exc:
                 # Some OpenAI-compatible servers reject the `tools` field.

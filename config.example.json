@@ -26,5 +26,7 @@
   "allow_self_modify": true,
   "self_modify_requires_confirm": true,
   "service_port": 8765,
-  "api_token": ""
+  "api_token": "",
+  "animations": true,
+  "haptics": true
 }

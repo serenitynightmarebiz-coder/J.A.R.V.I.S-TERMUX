@@ -6,7 +6,7 @@ import json
 import re
 import time
 
-from . import shims, ui
+from . import animations, shims, ui
 from .config import Config
 
 
@@ -62,11 +62,20 @@ class Voice:
         return []
 
     # ------------------------------------------------------------------- input
-    def listen(self, language: str = "en-US", prompt: str = "") -> str:
+    def listen(self, language: str = "en-US", prompt: str = "", animate: bool = True) -> str:
         """One utterance. termux-speech-to-text shows its own listening dialog."""
         if shims.has("termux-toast") and prompt:
             shims.run(["termux-toast", "-g", "middle", prompt[:120]])
-        ok, data, err = shims.termux_json("termux-speech-to-text", "-l", language, timeout=90)
+        force = None if getattr(self.cfg, "animations", True) else False
+        haptics = bool(getattr(self.cfg, "haptics", True))
+        listen_ctx = animations.Listening(prompt or "listening", force=force, haptics=haptics) if animate else None
+        if listen_ctx is not None:
+            listen_ctx.__enter__()
+        try:
+            ok, data, err = shims.termux_json("termux-speech-to-text", "-l", language, timeout=90)
+        finally:
+            if listen_ctx is not None:
+                listen_ctx.__exit__(None, None, None)
         if not ok:
             ui.warn(f"speech-to-text failed: {err}")
             return ""
@@ -108,6 +117,10 @@ class Voice:
             decision = gate.check(heard)
             if not decision.addressed:
                 continue
+            animations.wake_flash(
+                self.cfg.wake_word,
+                force=None if getattr(self.cfg, "animations", True) else False,
+            )
             if decision.reason == "sleep":
                 ui.info("standing by")
                 self.speak("Standing by.")

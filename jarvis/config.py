@@ -121,6 +121,9 @@ class Config:
     # background service
     service_port: int = 8765
     api_token: str = ""
+    # presentation
+    animations: bool = True
+    haptics: bool = True
 
     # ---------------------------------------------------------------- helpers
     def system_prompt(self) -> str:

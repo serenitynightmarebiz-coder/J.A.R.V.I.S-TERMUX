@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from . import llm as llm_mod
-from . import service, shims, ui
+from . import animations, service, shims, ui
 from .agent import Agent
 from .config import CONFIG_PATH, Config, PRESETS, PROVIDER_HELP, write_example
 from .gate import WakeGate
@@ -24,6 +24,7 @@ HELP = """
   /tools [category]  every capability, grouped
   /apps              installed apps
   /voice on|off      speak replies aloud
+  /anim on|off       terminal animations
   /listen            hold the mic for one instruction
   /handsfree         hands-free loop (wake word enforced)
   /wake on|off       require/disable the wake word
@@ -247,6 +248,8 @@ def repl(cfg: Config) -> int:
             ui.warn(detail)
 
     ui.banner(cfg.provider.model, cfg.provider.name, voice.enabled)
+    if cfg.animations:
+        animations.boot_sequence(force=None)
     if cfg.greeting:
         line = greet(cfg, memory)
         ui.jarvis(line)
@@ -307,6 +310,12 @@ def repl(cfg: Config) -> int:
                 from .tools.android import list_apps
 
                 print(list_apps(arg, 60))
+            elif cmd == "/anim":
+                if arg in ("on", "off"):
+                    cfg.animations = arg == "on"
+                    ui.ok(f"animations {'on' if cfg.animations else 'off'}")
+                else:
+                    ui.info(f"animations are {'on' if cfg.animations else 'off'}")
             elif cmd == "/voice":
                 if arg in ("on", "off"):
                     cfg.voice_output = arg == "on"
@@ -557,6 +566,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tools", action="store_true", help="list every tool and exit")
     parser.add_argument("--selftest", action="store_true", help="run offline self-test")
     parser.add_argument("--voice", action="store_true", help="start in hands-free voice mode")
+    parser.add_argument("--demo", action="store_true", help="preview the terminal animations")
     parser.add_argument("--serve", action="store_true", help="run the background API in the foreground")
     parser.add_argument("--start", action="store_true", help="start the background service")
     parser.add_argument("--stop", action="store_true", help="stop the background service")
@@ -605,6 +615,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.port:
         cfg.service_port = int(args.port)
 
+    if args.demo:
+        animations.demo()
+        return 0
     if args.tools:
         for category, tools in by_category().items():
             print(ui.gold(f"\n{category}"))

@@ -32,10 +32,11 @@ JARVIS › Message sent to Pepper Potts, sir.
 | Model | one hardcoded API | 12 providers + local Ollama / llama.cpp / LM Studio |
 | Offline | needs internet | fully local with Ollama |
 | Wake word | optional or absent | **required**, with a follow-up window and a sleep command |
+| Feedback | plain text | **live waveform, HUD spinner, wake flash, vibration** |
 | Self-repair | none | reads, edits, tests and reloads its own source |
 | Background | dies with the terminal | supervised daemon + loopback API + boot hook |
 | Safety | none | confirmation gate, loop budget, protected files, rollback |
-| Tests | none | **80 offline tests** + `--selftest` on device |
+| Tests | none | **98 offline tests** + `--selftest` on device |
 
 ---
 
@@ -108,6 +109,31 @@ jarvis, go to sleep           ✓ closes the window immediately
 
 ---
 
+## It shows you it is listening
+
+The terminal animates in place — a scrolling waveform while the mic is open, a
+gold HUD with elapsed time while the model thinks, a pulse when it hears its
+name, and a five-line boot sequence at startup.
+
+```
+  ◜ listening ◉ ▃▅▂▇▄▁▆▃▅▂▇▁▄▆▃▂▅▇▁▄▃▆▅▂▇▄▁
+  ⠹ thinking...   1.4s
+  ◝ JARVIS heard
+```
+
+On the phone it also vibrates twice when the mic opens and once when the wake
+word lands, so you can feel it listening without looking.
+
+```bash
+python jarvis.py --demo        # preview all animations
+```
+
+Control it with `/anim on|off`, or `animations: false` in `config.json`. The
+haptics have their own switch: `haptics: false`. Everything falls back to a
+single quiet line when output is piped, on a slow terminal, or with `NO_COLOR=1`,
+and each animation runs in a daemon thread that is always joined — a dead
+animation can never wedge the assistant (tested).
+
 ## It can rewrite itself
 
 Ask it to fix or extend its own code:
@@ -128,7 +154,7 @@ JARVIS › Added `flash_screen`, tests pass, reloaded.
 | `self_edit` | exact-snippet replacement, then syntax check |
 | `self_write` | create a new module, then syntax check |
 | `self_rollback` | restore the newest backup |
-| `self_test` | run the real 80-test suite and report the tail |
+| `self_test` | run the real 98-test suite and report the tail |
 | `self_logs` | read its own daemon/test logs |
 | `self_restart` | apply changes (`/reload` in a session, automatic in the daemon) |
 
@@ -201,7 +227,7 @@ python jarvis.py "jarvis, battery"      # one-shot (routed to the daemon if runn
 python jarvis.py --diag                 # is everything wired up?
 python jarvis.py --tools                # all 83 capabilities
 python jarvis.py --selftest             # offline proof nothing is broken
-python -m unittest discover -s tests    # 80 tests, no phone needed
+python -m unittest discover -s tests    # 98 tests, no phone needed
 ```
 
 ### Things it can actually do
@@ -226,7 +252,8 @@ python -m unittest discover -s tests    # 80 tests, no phone needed
 |---|---|
 | `/help`, `/tools [cat]`, `/apps` | discover |
 | `/wake on\|off`, `/sleep` | wake gating |
-| `/voice`, `/listen`, `/handsfree` | voice |
+| `/voice`, `/listen`, `/handsfree`, `/anim` | voice + animations |
+| `/demo` (`--demo`) | preview the animations |
 | `/model`, `/provider` | switch brains live |
 | `/memory`, `/remember`, `/forget`, `/clear` | memory |
 | `/self`, `/reload`, `/test [suite]` | self-modification |

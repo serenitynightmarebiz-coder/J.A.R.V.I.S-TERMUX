@@ -90,38 +90,21 @@ def ok(text: str) -> None:
 
 
 class Spinner:
-    """Tiny thinking indicator; silent when not a TTY."""
+    """Backwards-compatible name for the HUD 'thinking' animation."""
 
-    FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-
-    def __init__(self, label: str = "thinking"):
+    def __init__(self, label: str = "thinking", force: bool | None = None):
         self.label = label
-        self._stop = threading.Event()
-        self._thread: threading.Thread | None = None
+        self.force = force
 
     def __enter__(self):
-        if not ENABLED:
-            return self
-        self._thread = threading.Thread(target=self._spin, daemon=True)
-        self._thread.start()
+        from .animations import Thinking
+
+        self._ctx = Thinking(self.label, force=self.force)
+        self._ctx.__enter__()
         return self
 
-    def _spin(self) -> None:
-        i = 0
-        while not self._stop.is_set():
-            frame = self.FRAMES[i % len(self.FRAMES)]
-            sys.stdout.write(f"\r  {dim(frame)} {dim(self.label)}  ")
-            sys.stdout.flush()
-            i += 1
-            time.sleep(0.08)
-
     def __exit__(self, *exc):
-        self._stop.set()
-        if self._thread:
-            self._thread.join(timeout=0.3)
-        if ENABLED:
-            sys.stdout.write("\r" + " " * (len(self.label) + 8) + "\r")
-            sys.stdout.flush()
+        return self._ctx.__exit__(*exc)
 
 
 def wrap(text: str, indent: int = 9) -> str:
