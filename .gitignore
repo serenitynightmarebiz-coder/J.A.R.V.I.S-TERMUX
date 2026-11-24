@@ -1,5 +1,7 @@
 # secrets + local state
 config.json
+.env
+*.env
 data/
 logs/
 *.log
@@ -9,6 +11,10 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# buildozer / android build output
+bin/
+*.apk
 
 # editors / os
 .DS_Store
