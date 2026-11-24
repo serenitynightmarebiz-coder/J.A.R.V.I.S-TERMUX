@@ -9,6 +9,11 @@ sensors, files, shell — and thinks with **either a local model or any cloud AP
 It only acts when you say its name, it can rewrite its own code, and it keeps
 running when you close the terminal.
 
+```bash
+git clone https://github.com/serenitynightmarebiz-coder/J.A.R.V.I.S-TERMUX.git ~/jarvis
+cd ~/jarvis && bash install.sh
+```
+
 ```
 you › jarvis, find Pepper in whatsapp and tell her I'll be late
   ⚙ launch_app app=whatsapp
@@ -48,7 +53,8 @@ JARVIS › Message sent to Pepper Potts, sir.
 
 ```bash
 pkg install -y git
-git clone <your-fork-url> ~/jarvis && cd ~/jarvis
+git clone https://github.com/serenitynightmarebiz-coder/J.A.R.V.I.S-TERMUX.git ~/jarvis
+cd ~/jarvis
 bash install.sh
 ```
 
