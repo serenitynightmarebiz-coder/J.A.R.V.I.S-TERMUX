@@ -52,6 +52,10 @@ git clone <your-fork-url> ~/jarvis && cd ~/jarvis
 bash install.sh
 ```
 
+The installer runs `pkg install` non-interactively (no prompts, stdin from
+`/dev/null`, a 5-minute dpkg lock timeout), so it can't appear to hang. Already
+have the packages? `bash install.sh --skip-update` skips the index refresh.
+
 3. Grant **Termux:API** permissions: Microphone, Camera, SMS, Phone, Contacts,
    Location, Storage.
 4. Set Termux battery usage to **Unrestricted**.
@@ -327,6 +331,8 @@ Restart, or `/reload`. The model sees it immediately — no prompt editing.
 | symptom | fix |
 |---|---|
 | `Termux:API is not available` | install the Termux:API **app**, `pkg install termux-api`, reopen Termux |
+| installer looks frozen on `pkg install` | it was blocked on an invisible apt prompt or a stale dpkg lock — re-run `bash install.sh` (now non-interactive); if a lock is stuck: `pkill -f apt; pkill -f dpkg` |
+| `pkg update` fails on the mirror | `termux-change-repo`, then `bash install.sh --skip-update` |
 | `Cannot reach the model server` | `ollama serve &` — or fix `provider.base_url` |
 | `HTTP 401` | key wrong/missing: `export GROQ_API_KEY=...` |
 | Vosk-less voice silence | `termux-speech-to-text` needs the mic dialog; grant microphone |
