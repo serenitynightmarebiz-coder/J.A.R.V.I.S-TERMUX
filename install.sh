@@ -2,6 +2,7 @@
 # J.A.R.V.I.S. installer for Termux.
 #   bash install.sh              install everything + guided setup
 #   bash install.sh --no-setup   install dependencies only
+#   bash install.sh --skip-update  don't run `pkg update` (fast re-install)
 #   bash install.sh --voice      also install optional local wake-word extras
 set -euo pipefail
 
@@ -13,9 +14,11 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 SETUP=1
 VOICE_EXTRAS=0
+DO_UPDATE=1
 for arg in "$@"; do
   case "$arg" in
     --no-setup) SETUP=0 ;;
+    --skip-update) DO_UPDATE=0 ;;
     --voice) VOICE_EXTRAS=1 ;;
     -h|--help) sed -n '2,6p' "$0"; exit 0 ;;
     *) warn "unknown option $arg"; exit 2 ;;
@@ -31,21 +34,73 @@ if [ ! -d /data/data/com.termux ]; then
   exit 1
 fi
 
-say "Updating package index"
-pkg update -y >/dev/null 2>&1 || warn "pkg update had warnings; continuing"
+# --- package installation ---------------------------------------------------
+# Termux's `pkg` is a thin apt wrapper. Three things make it look "stuck":
+#   1. apt asks questions (config-file conflicts, mirror choice) and blocks on
+#      stdin forever — worst when stdout is hidden, so you see nothing at all.
+#   2. a previous interrupted run still holds the dpkg lock, and apt waits.
+#   3. an unreachable mirror makes the HTTP fetch hang with no timeout.
+# So: noninteractive frontend, force-conf*, a lock timeout, bounded network
+# waits, stdin from /dev/null — and never hide the output.
+export DEBIAN_FRONTEND=noninteractive
+export APT_LISTCHANGES_FRONTEND=none
+APT_OPTS=(
+  -y
+  -o Dpkg::Options::=--force-confdef
+  -o Dpkg::Options::=--force-confold
+  -o DPkg::Lock::Timeout=300
+  -o Acquire::http::Timeout=30
+  -o Acquire::https::Timeout=30
+  -o Acquire::Retries=2
+)
 
-say "Installing system packages"
-pkg install -y python termux-api termux-tools coreutils grep sed findutils >/dev/null
+# Older apt builds reject some of the -o keys above; probe once and fall back
+# to plain -y rather than dying on an unknown option.
+if ! apt -o DPkg::Lock::Timeout=1 --version >/dev/null 2>&1; then
+  warn "this apt is too old for the no-prompt options; using plain -y"
+  APT_OPTS=(-y)
+fi
+
+# `pkg <sub> [pkgs...]` with all the no-prompt guards applied.
+pkg_do() {
+  local sub="$1"; shift
+  pkg "$sub" "${APT_OPTS[@]}" "$@" < /dev/null
+}
+
+# A half-finished earlier install leaves dpkg in a broken state; repair it
+# quietly so the install below can proceed instead of erroring out.
+if ! dpkg --configure -a >/dev/null 2>&1; then
+  warn "dpkg was in a partial state; tried to repair it (continuing)"
+fi
+
+if [ "$DO_UPDATE" = "1" ]; then
+  say "Updating package index (this can take a minute)"
+  if ! pkg_do update; then
+    warn "pkg update had warnings; continuing anyway"
+    warn "if it failed on the mirror, run:  termux-change-repo"
+  fi
+else
+  say "Skipping package index update (--skip-update)"
+fi
+
+say "Installing system packages (python, termux-api, tools)"
+if ! pkg_do install python termux-api termux-tools coreutils grep sed findutils; then
+  warn "package install reported errors — see the output above"
+  warn "if a dpkg lock is stuck, run:  pkill -f apt; pkill -f dpkg"
+fi
 ok "python $(python3 -V 2>&1 | awk '{print $2}') + termux-api"
 
 # Optional but genuinely useful
 for pkgname in curl git jq; do
-  have "$pkgname" || pkg install -y "$pkgname" >/dev/null 2>&1 || true
+  if ! have "$pkgname"; then
+    say "Installing $pkgname"
+    pkg_do install "$pkgname" || warn "$pkgname unavailable; skipping"
+  fi
 done
 
 if [ "$VOICE_EXTRAS" = "1" ]; then
   say "Installing optional voice extras (may take a while)"
-  pkg install -y ffmpeg sox >/dev/null 2>&1 || warn "ffmpeg/sox unavailable; cloud-free wake word stays disabled"
+  pkg_do install ffmpeg sox || warn "ffmpeg/sox unavailable; cloud-free wake word stays disabled"
 fi
 
 say "Checking Termux:API bridge"
