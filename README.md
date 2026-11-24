@@ -365,6 +365,50 @@ No other change is needed; set `"compress_context": false` in config.json (or
 
 ---
 
+## APK — a real app, no Termux required
+
+The butler ships as a standalone Android app too. Same agent, same 83 tools —
+`main.py` wraps the agent loop in a Kivy chat UI (gold bubbles for you, cyan
+for JARVIS), so the phone experience is a normal conversation instead of a
+terminal.
+
+**Build it (one click, on GitHub Actions):**
+
+```sh
+gh workflow run build-apk.yml
+```
+
+Or from the Actions tab — the workflow installs Buildozer + the Android SDK/NDK
+on a runner, compiles, and uploads the APK as a build artifact (30 days). It
+takes 10–20 minutes on a cold run.
+
+```sh
+# after a successful build, download the artifact:
+gh run download <run-id> --name jarvis-apk
+```
+
+**Build it yourself (Termux):**
+
+```sh
+pkg install -y python kivy
+pip install buildozer
+cd ~/jarvis
+buildozer -v android debug     # ~15 min, ~2 GB free disk needed
+```
+
+The result is `bin/JARVIS-0.0.1-arm64-v8a-debug.apk`. Give it the same permissions
+Termux has — it is still a Termux-native toolchain, so `termux-api` calls work
+inside the app too. **Or don't build it yourself:** `.github/workflows/build-apk.yml`
+does exactly this on GitHub Actions (Ubuntu runner, ~50 GB disk) on every push
+to `main`, and uploads the APK as a release artifact — see the workflow file.
+
+**Honest limits:** the APK is a debug build, not on an app store. It needs a
+model running somewhere (Ollama/llama.cpp on the same Wi-Fi, or a cloud API key)
+to think — the app itself is 100% offline-capable. Continuous wake-word
+listening still needs the app in the foreground, like any voice assistant.
+
+---
+
 ## Extras
 
 - **Termux:Widget** — `cp scripts/widget.sh ~/.shortcuts/JARVIS` for a tap-to-ask
