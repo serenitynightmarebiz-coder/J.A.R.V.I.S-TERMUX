@@ -1,19 +1,18 @@
-[buildozer]
+[app]
 title = JARVIS
 package.name = jarvis
 package.domain = org.nightmare
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,txt,json
-source.exclude_exts = spec
+source.exclude_dirs = tests,scripts,data,logs,bin,.git,.github,.polydev,.revyl,__pycache__
 version = 1.0.0
+requirements = python3,kivy
+orientation = portrait
+fullscreen = 0
+android.archs = arm64-v8a
+android.accept_sdk_license = True
 allow_backup = False
 
-[app]
-name = JARVIS
-source.dir = .
-requirements = python3,kivy
-android.archs = armeabi-v7a arm64-v8a
-android.gradle_version = 3.5.0
-android.add_compile_flags = -Wno-error
-p4a.source_path = .
-android.fulltrace = True
+[buildozer]
+log_level = 2
+bin_dir = bin

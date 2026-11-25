@@ -11,8 +11,9 @@ import os
 import sys
 from threading import Thread
 
-# Make the repo root importable when running from buildozer's app dir.
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Make the repo root importable: on Android buildozer puts main.py and the
+# jarvis/ package side by side in the app dir; on desktop it is the repo root.
+ROOT = os.path.dirname(os.path.abspath(__file__))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
