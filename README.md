@@ -440,6 +440,23 @@ listening still needs the app in the foreground, like any voice assistant.
 
 ---
 
+## Persistence and overlay limits
+
+Use `bash scripts/service-setup.sh` plus Termux:Boot for reboot persistence in
+Termux. Android may still stop background work, so set battery usage to
+**Unrestricted**. An overlay or microphone service requires explicit Android
+permission and a visible foreground notification; JARVIS never bypasses those
+OS controls. High-impact actions remain confirmation-gated, and no root or
+unrestricted device control is provided.
+
+## Safety
+
+Wake-word gating, API-token authentication, confirmation prompts, tool budgets,
+and protected self-modification are enabled by default. Keep API keys in
+`config.json` or environment variables only; never commit secrets.
+
+---
+
 ## Extras
 
 - **Termux:Widget** — `cp scripts/widget.sh ~/.shortcuts/JARVIS` for a tap-to-ask
