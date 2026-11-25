@@ -617,6 +617,22 @@ def main(argv: list[str] | None = None) -> int:
                 "address": args.user,
             }
         )
+        # Auto-trigger wizard if no API key is configured for a cloud provider
+        if not cfg.provider.is_local and not cfg.provider.api_key:
+            print("\n" + ui.bold("No API key configured. Running interactive setup..."))
+            cfg = wizard()
+            # Update cfg with any runtime overrides (e.g. --model)
+            if args.provider:
+                cfg.provider.name = args.provider
+            if args.model:
+                cfg.provider.model = args.model
+            if args.base_url:
+                cfg.provider.base_url = args.base_url
+            if args.api_key:
+                cfg.provider.api_key = args.api_key
+            if args.user:
+                cfg.user = args.user
+                cfg.address = args.user
     if args.no_voice:
         cfg.voice_output = False
     if args.no_wake:
