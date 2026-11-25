@@ -23,6 +23,15 @@ Termux:API probes fail.
 
 ## Pitfalls
 
+- Pushing: `origin` has no stored credentials, so a bare `git push origin main`
+  hangs forever. The user supplies a fresh GitHub PAT in chat (they expire in
+  about an hour); push with
+  `GIT_TERMINAL_PROMPT=0 git push https://serenitynightmarebiz-coder:<TOKEN>@github.com/serenitynightmarebiz-coder/J.A.R.V.I.S-TERMUX.git main:main`.
+  Never commit or record the token itself.
+- On 2025-11-25 the remote history was force-replaced (`--force-with-lease`)
+  with this clean root layout: the old remote had every file duplicated under
+  `jarvis/` (`jarvis/jarvis/`, `jarvis/tests/`, `jarvis/scripts/`). If remote
+  and local ever diverge again, diff first — the local tree is the tested one.
 - `config.json` is gitignored and not committed; the code falls back to built-in
   defaults, and `install.sh` copies `config.example.json`. Never commit it — it
   can hold an API key.
