@@ -341,11 +341,13 @@ def build(cfg: ProviderConfig):
     cls = PROVIDER_CLASSES.get(cfg.name)
     if cls is None:
         known = ", ".join(sorted(PROVIDER_CLASSES))
-        raise LLMError(f"Unknown provider '{cfg.name}'. Known providers: {known}.")
+        raise LLMError(f"Unknown provider \'{cfg.name}\'. Known providers: {known}.")
     if cfg.needs_key:
         env = PRESETS.get(cfg.name, ("", "", "JARVIS_API_KEY"))[2] or "JARVIS_API_KEY"
-        raise LLMError(
-            f"No API key for '{cfg.name}'. Export {env}, run `python jarvis.py --setup`, "
-            f"or use a local model (--provider ollama)."
-        )
+        api_key = os.environ.get(env, cfg.api_key)
+        if not api_key:
+            raise LLMError(
+                f"No API key configured for \'{cfg.name}\'. Export {env} or set it in config.json. "
+                f"Use a local model (--provider ollama) to avoid keys entirely."
+            )
     return cls(cfg)

@@ -96,6 +96,25 @@ Providers: `openai`, `anthropic`, `gemini`, `groq`, `openrouter`, `deepseek`,
 
 ---
 
+## Local AI — no keys, runs entirely offline
+
+| Model | RAM | Vision | Phone control | Notes |
+|---|---|---|---|---|
+| **#1: Llama 3.2 Vision (Quantized)** | ~3 GB | ✅ yes | ✅ yes | Quickest to run, excellent vision + tool use, zero-install via `ollama` |
+| Llama 3.1 8B Instruct (Quantized) | ~6 GB | ❌ | ✅ yes | Strong reasoning + tools, runs on most phones |
+| Llama 3.1 70B Instruct (Quantized) | ~20-40 GB | ❌ | ✅ yes | Top-tier reasoning, needs a high-RAM device |
+| Qwen2.5-VL-14B (Quantized) | ~12-16 GB | ✅ yes | ✅ yes | Excellent vision, balanced RAM & capability |
+| Phi-3.5-Vision (Quantized) | ~5-6 GB | ✅ yes | ✅ yes | Small but surprisingly capable in vision & tools |
+| Gemma 2 27B Instruct (Quantized) | ~10-16 GB | ❌ | ✅ yes | Google's efficient 27B, strong reasoning |
+| Mistral Nemo 12B (Quantized) | ~8-12 GB | ❌ | ✅ yes | Fast, cheap, good for tool-heavy tasks |
+| Qwen2.5 7B (Quantized) | ~2-4 GB | ❌ | ✅ yes | Extremely lightweight, great for low-RAM phones |
+| Phi-3 Mini 4K (Quantized) | ~1-2 GB | ❌ | ✅ yes | Near-zero footprint, still solid reasoning |
+| Smallest viable: Phi-3 Mini / Qwen2.5 1.5B | <1 GB | ❌ | ✅ yes | Barely registers on RAM, good for very constrained devices |
+
+**#1 recommendation: Llama 3.2 Vision (Quantized)** — it can see everything (screenshots, photos, documents), control the phone via tools, and runs on a phone with only ~3 GB RAM. It feels like a background process that’s almost invisible, yet it’s extremely smart and capable. Install with `ollama pull llama3.2-vision`.
+
+---
+
 ## Say my name
 
 JARVIS does **nothing** unless addressed:
